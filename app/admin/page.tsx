@@ -454,21 +454,42 @@ export default function AdminPage() {
     if (cmd.is_multi_step) {
       try {
         const steps = await getCommandSteps(cmd.id)
-        setCommandSteps(steps.map(step => ({
-          step_number: step.step_number,
-          command: step.command,
-          comment: step.comment
-        })))
+
+        // If there are no persisted step rows yet, derive steps from the stored command string
+        if (!steps || steps.length === 0) {
+          const fallbackSteps = cmd.command
+            .split('\n')
+            .filter((step) => step.trim())
+            .map((step, index) => ({
+              step_number: index + 1,
+              command: step.trim(),
+              comment: '',
+            }))
+          setCommandSteps(fallbackSteps)
+        } else {
+          setCommandSteps(
+            steps.map((step) => ({
+              step_number: step.step_number,
+              command: step.command,
+              comment: step.comment,
+            })),
+          )
+        }
+
         setExpandedEditor(true)
       } catch (error) {
         console.error("Failed to load command steps:", error)
-        // Fallback to parsing the command string
-        const fallbackSteps = cmd.command.split('\n').filter((step, index) => step.trim()).map((step, index) => ({
-          step_number: index + 1,
-          command: step.trim(),
-          comment: ''
-        }))
+        // Fallback to parsing the command string if API fails
+        const fallbackSteps = cmd.command
+          .split('\n')
+          .filter((step) => step.trim())
+          .map((step, index) => ({
+            step_number: index + 1,
+            command: step.trim(),
+            comment: '',
+          }))
         setCommandSteps(fallbackSteps)
+        setExpandedEditor(true)
       }
     } else {
       setCommandSteps([])
