@@ -1,0 +1,308 @@
+"use client"
+
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import {
+  getSession,
+  getCommands,
+  getCategories,
+  getPlaceholderSets,
+  getPlaceholderValues,
+  getNotes,
+  type Command,
+  type Category,
+  type PlaceholderSet,
+  type PlaceholderValue,
+  type Note,
+  clearSession,
+} from "@/lib/storage"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Terminal, LogOut, Settings, Copy, Check, Search, User } from "lucide-react"
+
+export default function VaultPage() {
+  const router = useRouter()
+  const [commands, setCommands] = useState<Command[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [placeholderSets, setPlaceholderSets] = useState<PlaceholderSet[]>([])
+  const [placeholderValues, setPlaceholderValues] = useState<PlaceholderValue[]>([])
+  const [notes, setNotes] = useState<Note[]>([])
+  const [selectedPlaceholderSet, setSelectedPlaceholderSet] = useState<string>("none")
+  const [searchQuery, setSearchQuery] = useState("")
+  const [selectedCategory, setSelectedCategory] = useState<string>("all")
+  const [placeholders, setPlaceholders] = useState<Record<string, string>>({})
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!getSession()) {
+      router.push("/login")
+      return
+    }
+
+    void loadData()
+  }, [router])
+
+  useEffect(() => {
+    if (selectedPlaceholderSet && selectedPlaceholderSet !== "none") {
+      void loadPlaceholderValues(selectedPlaceholderSet)
+    } else {
+      setPlaceholders({})
+    }
+  }, [selectedPlaceholderSet])
+
+  const loadData = async () => {
+    const [cmds, cats, sets, nts] = await Promise.all([getCommands(), getCategories(), getPlaceholderSets(), getNotes()])
+    setCommands(cmds)
+    setCategories(cats)
+    setPlaceholderSets(sets)
+    setNotes(nts)
+  }
+
+  const loadPlaceholderValues = async (setId: string) => {
+    const values = await getPlaceholderValues(setId)
+    setPlaceholderValues(values)
+    const newPlaceholders: Record<string, string> = {}
+    for (const v of values) {
+      newPlaceholders[v.placeholder_name] = v.default_value
+    }
+    setPlaceholders(newPlaceholders)
+  }
+
+  const handleLogout = () => {
+    clearSession()
+    router.push("/login")
+  }
+
+  const filteredCommands = commands.filter((cmd) => {
+    const matchesSearch =
+      cmd.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      cmd.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      cmd.command.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesCategory = selectedCategory === "all" || cmd.category_id === selectedCategory
+    return matchesSearch && matchesCategory
+  })
+
+  const filteredNotes = notes.filter((note) => {
+    const matchesSearch =
+      note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      note.content.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesCategory = selectedCategory === "all" || selectedCategory === "notes" || note.category_id === selectedCategory
+    return matchesSearch && matchesCategory
+  })
+
+  const replacePlaceholders = (command: string) => {
+    let result = command
+    Object.entries(placeholders).forEach(([key, value]) => {
+      result = result.replace(new RegExp(`{{${key}}}`, "g"), value)
+    })
+    return result
+  }
+
+  const renderCommand = (cmd: Command) => {
+    const processedCommand = replacePlaceholders(cmd.command)
+    if (cmd.is_multi_step) {
+      const steps = processedCommand.split("\n").filter((step) => step.trim())
+      return steps.map((step, index) => (
+        <div key={index} className="font-mono text-sm bg-muted p-2 rounded mb-1">
+          <span className="text-primary font-bold mr-2">{index + 1}.</span>
+          {step}
+        </div>
+      ))
+    }
+    return <div className="font-mono text-sm bg-muted p-2 rounded">{processedCommand}</div>
+  }
+
+  const extractPlaceholders = (command: string): string[] => {
+    const placeholderRegex = /\{\{(\w+)\}\}/g
+    const matches = command.matchAll(placeholderRegex)
+    return Array.from(new Set(Array.from(matches, (m) => m[1])))
+  }
+
+  const updatePlaceholder = (key: string, value: string) => {
+    const newPlaceholders = { ...placeholders, [key]: value }
+    setPlaceholders(newPlaceholders)
+    sessionStorage.setItem("placeholders", JSON.stringify(newPlaceholders))
+  }
+
+  const copyToClipboard = (cmd: Command, id: string) => {
+    const processedCommand = replacePlaceholders(cmd.command)
+    navigator.clipboard.writeText(processedCommand).then(() => {
+      setCopiedId(id)
+      setTimeout(() => setCopiedId(null), 2000)
+    })
+  }
+
+  const getCategoryName = (categoryId: string) => {
+    return categories.find((c) => c.id === categoryId)?.name || "Unknown"
+  }
+
+  // Get all unique placeholders from filtered commands
+  const allPlaceholders = Array.from(new Set(filteredCommands.flatMap((cmd) => extractPlaceholders(cmd.command))))
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="border-b border-border bg-card">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Terminal className="w-8 h-8 text-primary" />
+              <h1 className="text-2xl font-bold font-mono text-foreground">Command Vault</h1>
+            </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => router.push("/admin")} className="font-mono">
+                  <Settings className="w-4 h-4 mr-2" />
+                  Admin
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => router.push("/profile")} className="font-mono">
+                  <User className="w-4 h-4 mr-2" />
+                  Profile
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleLogout} className="font-mono bg-transparent">
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Logout
+                </Button>
+              </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="container mx-auto px-4 py-8">
+        {/* Search and Filter */}
+        <div className="mb-8 space-y-4">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1 max-w-xl">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                  <Input
+                    placeholder="Search commands..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 font-mono"
+                  />
+                </div>
+              </div>
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <SelectTrigger className="w-full md:w-[200px] font-mono">
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" className="font-mono">
+                  All Categories
+                </SelectItem>
+                <SelectItem value="notes" className="font-mono">
+                  Notes
+                </SelectItem>
+                {categories.map((cat) => (
+                  <SelectItem key={cat.id} value={cat.id} className="font-mono">
+                    {cat.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex-grow" />
+            {placeholderSets.length > 0 && (
+              <Select value={selectedPlaceholderSet} onValueChange={setSelectedPlaceholderSet}>
+                <SelectTrigger className="w-full md:w-[280px] font-mono">
+                  <SelectValue placeholder="Placeholder set: None">
+                    {selectedPlaceholderSet && selectedPlaceholderSet !== "none"
+                      ? `Placeholder set: ${placeholderSets.find((s) => s.id === selectedPlaceholderSet)?.name}`
+                      : "Placeholder set: None"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none" className="font-mono">None</SelectItem>
+                  {placeholderSets.map((set) => (
+                    <SelectItem key={set.id} value={set.id} className="font-mono">
+                      {set.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+        </div>
+
+        {/* Notes Section */}
+        {selectedCategory === "notes" && (
+          <div className="space-y-4">
+            {filteredNotes.length === 0 ? (
+              <div className="text-center py-12 bg-card border border-border rounded-lg">
+                <p className="text-muted-foreground font-mono">No notes found</p>
+              </div>
+            ) : (
+              filteredNotes.map((note) => (
+                <div key={note.id} className="bg-card border border-border rounded-lg p-4">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold font-mono text-foreground mb-1">{note.title}</h3>
+                      <span className="text-xs font-mono text-primary bg-primary/10 px-2 py-1 rounded">
+                        {getCategoryName(note.category_id)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="prose prose-sm max-w-none dark:prose-invert">
+                    <div dangerouslySetInnerHTML={{ __html: note.content.replace(/\n/g, '<br>') }} />
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* Commands List */}
+        {selectedCategory !== "notes" && (
+          <div className="space-y-4">
+            {filteredCommands.length === 0 ? (
+              <div className="text-center py-12 bg-card border border-border rounded-lg">
+                <p className="text-muted-foreground font-mono">No commands found</p>
+              </div>
+            ) : (
+              filteredCommands.map((cmd) => (
+              <div
+                key={cmd.id}
+                className="bg-card border border-border rounded-lg p-4 hover:border-primary transition-colors"
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold font-mono text-foreground mb-1">{cmd.name}</h3>
+                    <span className="text-xs font-mono text-primary bg-primary/10 px-2 py-1 rounded">
+                      {getCategoryName(cmd.category_id)}
+                    </span>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => copyToClipboard(cmd, cmd.id)}
+                    className="font-mono"
+                  >
+                    {copiedId === cmd.id ? (
+                      <>
+                        <Check className="w-4 h-4 mr-2" />
+                        Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4 mr-2" />
+                        Copy
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                <p className="text-sm text-muted-foreground mb-3 font-mono">{cmd.description}</p>
+
+                <div className="bg-background border border-border rounded p-3">
+                  <div className="mb-3">
+                    {renderCommand(cmd)}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </main>
+    </div>
+  )
+}
