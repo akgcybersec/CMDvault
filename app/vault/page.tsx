@@ -594,8 +594,97 @@ export default function VaultPage() {
                     {/* Note preview / full content */}
                     {isExpanded ? (
                       <div className="mt-3 rounded-lg border border-primary/30 bg-gradient-to-br from-primary/10 via-background to-background px-4 py-3 max-h-[60vh] overflow-auto">
-                        <div className="prose prose-sm max-w-none dark:prose-invert font-mono prose-a:text-primary prose-strong:text-primary prose-code:text-emerald-400 break-words">
-                          <ReactMarkdown>{note.content}</ReactMarkdown>
+                        <div className="font-mono text-sm text-foreground whitespace-pre-wrap break-words">
+                          <ReactMarkdown
+                            components={{
+                              h1: (props: any) => (
+                                <h1 className="text-xl font-bold text-primary mb-2" {...props} />
+                              ),
+                              h2: (props: any) => (
+                                <h2 className="text-lg font-semibold text-primary mb-2" {...props} />
+                              ),
+                              h3: (props: any) => (
+                                <h3 className="text-base font-semibold text-primary mb-1" {...props} />
+                              ),
+                              strong: (props: any) => (
+                                <strong className="text-primary font-semibold" {...props} />
+                              ),
+                              code: (props: any) => {
+                                const { inline, children, className, ...rest } = props
+                                const text = typeof children === "string" ? children : Array.isArray(children) ? children.join("") : ""
+
+                                // If inline code contains newlines, treat it as a block code section
+                                const isMultiLineInline = inline && typeof text === "string" && text.includes("\n")
+
+                                if (!inline || isMultiLineInline) {
+                                  const langMatch = typeof className === "string" ? className.match(/language-([\w+-]+)/) : null
+                                  const langLabel = langMatch?.[1]?.toUpperCase()
+
+                                  const handleCopyBlock = () => {
+                                    if (typeof text === "string" && text.trim().length > 0) {
+                                      void navigator.clipboard.writeText(text)
+                                    }
+                                  }
+
+                                  return (
+                                    <div className="mt-3 rounded-lg bg-black/80 border border-primary/60 shadow-[0_0_18px_rgba(34,197,94,0.25)] overflow-hidden group relative">
+                                      {langLabel && (
+                                        <div className="flex items-center justify-between px-3 py-1 border-b border-primary/40 bg-black/70 text-[10px] font-mono tracking-widest text-primary/80 uppercase">
+                                          <span>{langLabel}</span>
+                                        </div>
+                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={handleCopyBlock}
+                                        className="hidden group-hover:flex items-center justify-center absolute top-2 right-2 h-6 w-6 rounded border border-primary/50 bg-black/80 hover:bg-primary/80 hover:text-primary-foreground transition-colors"
+                                      >
+                                        <Copy className="w-3 h-3" />
+                                      </button>
+                                      <pre
+                                        className="px-4 py-3 overflow-x-auto text-emerald-300 text-[13px] leading-relaxed"
+                                        {...rest}
+                                      >
+                                        {children}
+                                      </pre>
+                                    </div>
+                                  )
+                                }
+
+                                // True inline code (single line)
+                                const handleCopyInline = () => {
+                                  if (typeof text === "string" && text.trim().length > 0) {
+                                    void navigator.clipboard.writeText(text)
+                                  }
+                                }
+
+                                return (
+                                  <span className="inline-flex items-center gap-1">
+                                    <code
+                                      className="px-1 py-0.5 rounded bg-black/70 text-emerald-400 text-[0.85em]"
+                                      {...rest}
+                                    >
+                                      {children}
+                                    </code>
+                                    <button
+                                      type="button"
+                                      onClick={handleCopyInline}
+                                      className="inline-flex items-center justify-center h-4 w-4 rounded border border-border/60 bg-black/70 hover:bg-primary/80 hover:text-primary-foreground transition-colors"
+                                    >
+                                      <Copy className="w-2.5 h-2.5" />
+                                    </button>
+                                  </span>
+                                )
+                              },
+                              li: (props: any) => (
+                                <li className="ml-4 list-disc text-sm text-muted-foreground" {...props} />
+                              ),
+                              p: (props: any) => (
+                                <p className="mb-2 text-sm text-muted-foreground" {...props} />
+                              ),
+                            }}
+                          >
+                            {note.content}
+                          </ReactMarkdown>
                         </div>
                       </div>
                     ) : (

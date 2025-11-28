@@ -50,6 +50,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Terminal, ArrowLeft, Trash2, Edit, Plus, Save, X, ChevronDown, ChevronUp, Settings } from "lucide-react"
 import { ConfirmDialog, useConfirmDialog } from "@/components/ui/confirm-dialog"
 import { useToast } from "@/hooks/use-toast"
+import ReactMarkdown from "react-markdown"
 
 export default function AdminPage() {
   const router = useRouter()
@@ -1516,8 +1517,8 @@ nmap -sV {{target}}
                         required
                       />
                     </div>
-                    <div className="flex items-center justify-between text-xs text-muted-foreground font-mono">
-                      <p>Supports markdown: # Headers, **bold**, *italic*, `code`, ```blocks```, - lists</p>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground font-mono mt-1">
+                      <p>Supports markdown: # headers, **bold**, *italic*, `code`, ```blocks```, - lists</p>
                       <p>{noteForm.content.length} characters</p>
                     </div>
                   </div>
@@ -1555,8 +1556,8 @@ nmap -sV {{target}}
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <h3 className="text-lg font-semibold font-mono text-foreground mb-1">{note.title}</h3>
-                        <p className="text-sm text-muted-foreground font-mono mt-2">
-                          {note.content.slice(0, 100)}{note.content.length > 100 ? "..." : ""}
+                        <p className="text-sm text-muted-foreground font-mono mt-2 whitespace-pre-line">
+                          {note.content.slice(0, 160)}{note.content.length > 160 ? "\n..." : ""}
                         </p>
                       </div>
                       <div className="flex gap-2">
