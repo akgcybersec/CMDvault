@@ -197,7 +197,7 @@ export default function VaultPage() {
               </div>
             )}
             <div className="flex items-center rounded-md bg-muted/60 px-3 py-2 pr-9">
-              <span className="truncate">
+              <span className="whitespace-pre-wrap break-words">
                 {line}
               </span>
             </div>
@@ -233,7 +233,7 @@ export default function VaultPage() {
     return (
       <div className="group relative font-mono text-sm rounded">
         <div className="flex items-center rounded-md bg-muted/60 px-3 py-2 pr-9">
-          <span className="truncate">
+          <span className="whitespace-pre-wrap break-words">
             {processedCommand}
           </span>
         </div>
@@ -526,10 +526,10 @@ export default function VaultPage() {
 
                     {/* Detailed body (animated open/close) */}
                     <div
-                      className={`overflow-hidden transition-all duration-200 ease-out ${
+                      className={`transition-all duration-200 ease-out ${
                         isExpanded
-                          ? "mt-3 max-h-[480px] opacity-100 space-y-2"
-                          : "max-h-0 opacity-0"
+                          ? "mt-3 max-h-[60vh] opacity-100 space-y-2 overflow-y-auto pr-1"
+                          : "max-h-0 opacity-0 overflow-hidden"
                       }`}
                     >
                       <div className="space-y-1">{renderCommand(cmd)}</div>
