@@ -88,6 +88,7 @@ export default function AdminPage() {
   const [showPlaceholderAutocomplete, setShowPlaceholderAutocomplete] = useState(false)
   const [autocompleteIndex, setAutocompleteIndex] = useState(0)
   const [commandTextareaRef, setCommandTextareaRef] = useState<HTMLTextAreaElement | null>(null)
+  const [activeStepIndexForAutocomplete, setActiveStepIndexForAutocomplete] = useState<number | null>(null)
 
   const [placeholderValueForm, setPlaceholderValueForm] = useState<Record<string, string>>({})
 
@@ -628,26 +629,68 @@ export default function AdminPage() {
     if (openBracesMatch) {
       setShowPlaceholderAutocomplete(true)
       setAutocompleteIndex(0)
+      setActiveStepIndexForAutocomplete(null)
     } else {
       setShowPlaceholderAutocomplete(false)
     }
   }
 
-  const insertPlaceholder = (placeholder: string) => {
-    if (!commandTextareaRef) return
-    const value = commandTextareaRef.value
-    const cursorPos = commandTextareaRef.selectionStart
+  const handleStepCommandInput = (index: number, e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value
+    // Update the step content
+    updateStep(index, "command", value)
+
+    // Detect `{{` immediately before the cursor position
+    const cursorPos = e.target.selectionStart
     const beforeCursor = value.slice(0, cursorPos)
-    const afterCursor = value.slice(cursorPos)
-    const newValue = beforeCursor.replace(/\{\{$/, `{{${placeholder}}}`) + afterCursor
-    setFormData({ ...formData, command: newValue })
+    const openBracesMatch = beforeCursor.match(/\{\{$/)
+
+    if (openBracesMatch) {
+      setShowPlaceholderAutocomplete(true)
+      setAutocompleteIndex(0)
+      setActiveStepIndexForAutocomplete(index)
+    } else {
+      setShowPlaceholderAutocomplete(false)
+      setActiveStepIndexForAutocomplete(null)
+    }
+  }
+
+  const insertPlaceholder = (placeholder: string) => {
+    // If we're in single-command mode, operate on the main textarea
+    if (activeStepIndexForAutocomplete === null) {
+      if (!commandTextareaRef) return
+      const value = commandTextareaRef.value
+      const cursorPos = commandTextareaRef.selectionStart
+      const beforeCursor = value.slice(0, cursorPos)
+      const afterCursor = value.slice(cursorPos)
+      const newValue = beforeCursor.replace(/\{\{$/, `{{${placeholder}}}`) + afterCursor
+      setFormData({ ...formData, command: newValue })
+      setShowPlaceholderAutocomplete(false)
+      // Focus back and set cursor after inserted placeholder
+      setTimeout(() => {
+        commandTextareaRef.focus()
+        const newCursorPos = beforeCursor.replace(/\{\{$/, `{{${placeholder}}}`).length
+        commandTextareaRef.setSelectionRange(newCursorPos, newCursorPos)
+      }, 0)
+      return
+    }
+
+    // Otherwise we're inside a specific multi-step command textarea
+    const stepIndex = activeStepIndexForAutocomplete
+    if (stepIndex < 0 || stepIndex >= commandSteps.length) {
+      setShowPlaceholderAutocomplete(false)
+      setActiveStepIndexForAutocomplete(null)
+      return
+    }
+
+    const updatedSteps = [...commandSteps]
+    const current = updatedSteps[stepIndex]
+    const currentText = current.command || ""
+    const newText = currentText.replace(/\{\{$/, `{{${placeholder}}}`)
+    updatedSteps[stepIndex] = { ...current, command: newText }
+    setCommandSteps(updatedSteps)
     setShowPlaceholderAutocomplete(false)
-    // Focus back and set cursor after inserted placeholder
-    setTimeout(() => {
-      commandTextareaRef.focus()
-      const newCursorPos = beforeCursor.replace(/\{\{$/, `{{${placeholder}}}`).length
-      commandTextareaRef.setSelectionRange(newCursorPos, newCursorPos)
-    }, 0)
+    setActiveStepIndexForAutocomplete(null)
   }
 
   const handleAutocompleteKeyDown = (e: React.KeyboardEvent) => {
@@ -666,6 +709,7 @@ export default function AdminPage() {
     } else if (e.key === "Escape") {
       e.preventDefault()
       setShowPlaceholderAutocomplete(false)
+      setActiveStepIndexForAutocomplete(null)
     }
   }
 
@@ -844,7 +888,7 @@ export default function AdminPage() {
                     
                     {!formData.is_multi_step ? (
                       // Single command mode
-                      <div>
+                      <div className="relative">
                         <Textarea
                           id="command"
                           ref={setCommandTextareaRef}
@@ -859,6 +903,28 @@ export default function AdminPage() {
                         <p className="text-xs text-muted-foreground font-mono mt-1">
                           Use {"{{placeholder}}"} for dynamic values.
                         </p>
+
+                        {showPlaceholderAutocomplete && placeholders.length > 0 && activeStepIndexForAutocomplete === null && (
+                          <div className="absolute left-0 top-full mt-2 z-20 w-56 rounded-md border border-primary/60 bg-card/95 shadow-lg shadow-black/60">
+                            <div className="max-h-48 overflow-y-auto">
+                              {placeholders.map((ph, idx) => (
+                                <button
+                                  key={ph.id}
+                                  type="button"
+                                  onClick={() => insertPlaceholder(ph.name)}
+                                  onMouseEnter={() => setAutocompleteIndex(idx)}
+                                  className={`w-full text-left px-3 py-2 text-xs font-mono transition-colors ${
+                                    idx === autocompleteIndex
+                                      ? "bg-primary/90 text-primary-foreground"
+                                      : "bg-transparent text-foreground hover:bg-primary/20"
+                                  }`}
+                                >
+                                  {ph.name}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       // Multi-step command mode
@@ -903,14 +969,37 @@ export default function AdminPage() {
                                   )}
                                 </div>
                                 
-                                <div className="space-y-2">
+                                <div className="space-y-2 relative">
                                   <Textarea
                                     value={step.command}
-                                    onChange={(e) => updateStep(index, 'command', e.target.value)}
+                                    onChange={(e) => handleStepCommandInput(index, e)}
+                                    onKeyDown={handleAutocompleteKeyDown}
                                     className="font-mono text-sm"
                                     placeholder="Enter command for this step..."
                                     rows={2}
                                   />
+
+                                  {showPlaceholderAutocomplete && placeholders.length > 0 && activeStepIndexForAutocomplete === index && (
+                                    <div className="absolute left-0 top-full mt-2 z-20 w-56 rounded-md border border-primary/60 bg-card/95 shadow-lg shadow-black/60">
+                                      <div className="max-h-48 overflow-y-auto">
+                                        {placeholders.map((ph, idx) => (
+                                          <button
+                                            key={ph.id}
+                                            type="button"
+                                            onClick={() => insertPlaceholder(ph.name)}
+                                            onMouseEnter={() => setAutocompleteIndex(idx)}
+                                            className={`w-full text-left px-3 py-2 text-xs font-mono transition-colors ${
+                                              idx === autocompleteIndex
+                                                ? "bg-primary/90 text-primary-foreground"
+                                                : "bg-transparent text-foreground hover:bg-primary/20"
+                                            }`}
+                                          >
+                                            {ph.name}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
                                   
                                   <Input
                                     value={step.comment}
@@ -948,26 +1037,6 @@ export default function AdminPage() {
                         Multi-step command with comments
                       </Label>
                     </div>
-                    
-                    {showPlaceholderAutocomplete && placeholders.length > 0 && (
-                      <div className="relative z-10">
-                        <div className="absolute top-1 left-0 bg-background border border-border rounded-md shadow-lg max-h-40 overflow-y-auto">
-                          {placeholders.map((ph, idx) => (
-                            <button
-                              key={ph.id}
-                              type="button"
-                              onClick={() => insertPlaceholder(ph.name)}
-                              onMouseEnter={() => setAutocompleteIndex(idx)}
-                              className={`w-full text-left px-3 py-2 text-sm font-mono hover:bg-accent hover:text-accent-foreground ${
-                                idx === autocompleteIndex ? "bg-accent text-accent-foreground" : ""
-                              }`}
-                            >
-                              {ph.name}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </div>
 
                   <div className="space-y-2">

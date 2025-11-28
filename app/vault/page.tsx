@@ -593,8 +593,8 @@ export default function VaultPage() {
 
                     {/* Note preview / full content */}
                     {isExpanded ? (
-                      <div className="mt-3 rounded-lg border border-primary/30 bg-gradient-to-br from-primary/10 via-background to-background px-4 py-3">
-                        <div className="prose prose-sm max-w-none dark:prose-invert font-mono prose-a:text-primary prose-strong:text-primary prose-code:text-emerald-400">
+                      <div className="mt-3 rounded-lg border border-primary/30 bg-gradient-to-br from-primary/10 via-background to-background px-4 py-3 max-h-[60vh] overflow-auto">
+                        <div className="prose prose-sm max-w-none dark:prose-invert font-mono prose-a:text-primary prose-strong:text-primary prose-code:text-emerald-400 break-words">
                           <ReactMarkdown>{note.content}</ReactMarkdown>
                         </div>
                       </div>
