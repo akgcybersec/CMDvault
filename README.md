@@ -1,4 +1,4 @@
-# Pentesters' Command Vault
+# CMDvault
 
 Personal command and notes vault for penetration testers, built with **Next.js**, **TypeScript**, and **SQLite**.
 

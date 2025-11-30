@@ -44,7 +44,7 @@ export default function LoginPage() {
             </div>
             <div className="flex flex-col">
               <h1 className="text-sm font-semibold font-mono tracking-[0.18em] uppercase text-muted-foreground">
-                Pentesters' Command Vault
+                CMDvault
               </h1>
               <span className="text-[11px] font-mono text-muted-foreground/80">
                 Login to manage your commands and notes

@@ -290,7 +290,7 @@ export default function VaultPage() {
             <div className="flex items-center gap-3">
               <Terminal className="w-8 h-8 text-primary" />
               <h1 className="text-2xl font-bold font-mono text-foreground">
-                Pentesters' Command Vault
+                CMDvault
               </h1>
             </div>
               <div className="flex items-center gap-2">
