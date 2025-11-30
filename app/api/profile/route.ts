@@ -1,5 +1,6 @@
 import db from "@/lib/db"
 import { NextResponse } from "next/server"
+import bcrypt from "bcryptjs"
 
 export const runtime = "nodejs"
 
@@ -20,7 +21,24 @@ export async function POST(request: Request) {
 
   const user = db.prepare("SELECT * FROM users LIMIT 1").get() as { id: number; username: string; password: string } | undefined
 
-  if (!user || user.password !== currentPassword) {
+  if (!user) {
+    return NextResponse.json({ error: "Invalid current password" }, { status: 401 })
+  }
+
+  const storedPassword = user.password
+
+  let passwordMatches = false
+
+  if (storedPassword.startsWith("$2")) {
+    passwordMatches = bcrypt.compareSync(currentPassword, storedPassword)
+  } else if (storedPassword === currentPassword) {
+    // Legacy plaintext match – upgrade to hash
+    const upgradedHash = bcrypt.hashSync(currentPassword, 10)
+    db.prepare("UPDATE users SET password = ? WHERE id = ?").run(upgradedHash, user.id)
+    passwordMatches = true
+  }
+
+  if (!passwordMatches) {
     return NextResponse.json({ error: "Invalid current password" }, { status: 401 })
   }
 
@@ -33,8 +51,9 @@ export async function POST(request: Request) {
   }
 
   if (newPassword && newPassword.length > 0 && newPassword !== user.password) {
+    const newHash = bcrypt.hashSync(newPassword, 10)
     updates.push("password = ?")
-    values.push(newPassword)
+    values.push(newHash)
   }
 
   if (updates.length === 0) {

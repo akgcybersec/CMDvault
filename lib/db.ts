@@ -1,6 +1,7 @@
 import Database from "better-sqlite3"
 import path from "path"
 import fs from "fs"
+import bcrypt from "bcryptjs"
 
 const dataDir = path.join(process.cwd(), "data")
 if (!fs.existsSync(dataDir)) {
@@ -102,7 +103,8 @@ if (!isBuilding) {
   // Seed default data if empty
   const userCount = (db.prepare("SELECT COUNT(*) as count FROM users").get() as { count: number }).count
   if (userCount === 0) {
-    db.prepare("INSERT OR IGNORE INTO users (username, password) VALUES (?, ?)").run("admin", "admin")
+    const hashedAdminPassword = bcrypt.hashSync("admin", 10)
+    db.prepare("INSERT OR IGNORE INTO users (username, password) VALUES (?, ?)").run("admin", hashedAdminPassword)
   }
 
   const tagCount = (db.prepare("SELECT COUNT(*) as count FROM tags").get() as { count: number }).count
