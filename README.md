@@ -4,7 +4,11 @@ Personal command and notes vault for IT engineers built with **Next.js**, **Type
 
 ## Demo
 
-[▶️ Watch the CMDvault demo](./video.mov)
+https://github.com/user-attachments/assets/your-video-id-here
+
+> **Note**: Replace the URL above with your actual video after uploading it to GitHub (drag & drop the video.mov into a GitHub issue or PR to get the proper URL).
+
+Or view locally: [video.mov](./video/MovieGithub.m4v)
 
 The app has two main faces:
 
