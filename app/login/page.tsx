@@ -43,7 +43,7 @@ export default function LoginPage() {
               <Terminal className="w-5 h-5" />
             </div>
             <div className="flex flex-col">
-              <h1 className="text-sm font-semibold font-mono tracking-[0.18em] uppercase text-muted-foreground">
+              <h1 className="text-sm font-semibold font-mono tracking-[0.18em] text-muted-foreground">
                 CMDvault
               </h1>
               <span className="text-[11px] font-mono text-muted-foreground/80">

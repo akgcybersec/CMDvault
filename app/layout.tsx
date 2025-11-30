@@ -47,7 +47,7 @@ export default function RootLayout({
                   CMDvault · Open source · MIT License
                 </span>
                 <span className="font-mono">
-                  Use only on systems you own or are explicitly authorized to test. No warranty; authors and contributors are not responsible for misuse.
+                  No warranty; authors and contributors are not responsible for misuse.
                 </span>
               </div>
               <div className="flex flex-col gap-1 sm:items-end">
