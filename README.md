@@ -1,6 +1,6 @@
 # CMDvault
 
-Personal command and notes vault for penetration testers, built with **Next.js**, **TypeScript**, and **SQLite**.
+Personal command and notes vault for IT engineers built with **Next.js**, **TypeScript**, and **SQLite**.
 
 The app has two main faces:
 
