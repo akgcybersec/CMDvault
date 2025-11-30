@@ -4,9 +4,7 @@ Personal command and notes vault for IT engineers built with **Next.js**, **Type
 
 ## Demo
 
-[Demo](https://github.com/akgcybersec/CMDvault/blob/main/video/MovieGithub.m4v)
-
-[video.mov](https://github.com/akgcybersec/CMDvault/blob/main/video/MovieGithub.m4v)
+[![Watch the video](https://github.com/akgcybersec/CMDvault/blob/main/video/MovieGithub.m4v)](https://github.com/akgcybersec/CMDvault/blob/main/video/MovieGithub.m4v)
 
 The app has two main faces:
 
