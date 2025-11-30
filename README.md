@@ -2,6 +2,10 @@
 
 Personal command and notes vault for IT engineers built with **Next.js**, **TypeScript**, and **SQLite**.
 
+## Demo
+
+[▶️ Watch the CMDvault demo](./video.mov)
+
 The app has two main faces:
 
 - **Vault** – where you quickly search, filter, and copy commands and notes.
