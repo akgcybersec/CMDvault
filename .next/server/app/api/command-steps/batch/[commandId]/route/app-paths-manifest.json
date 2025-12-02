@@ -1,0 +1,3 @@
+{
+  "/api/command-steps/batch/[commandId]/route": "app/api/command-steps/batch/[commandId]/route.js"
+}

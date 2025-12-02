@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "functions": {
+    "/api/categories/[id]": {},
+    "/api/categories": {},
+    "/api/commands/[id]/tags": {},
+    "/api/login": {},
+    "/api/commands": {},
+    "/api/commands/[id]": {},
+    "/api/notes/[id]/tags": {},
+    "/api/notes/[id]": {},
+    "/api/placeholder-sets/[id]": {},
+    "/api/placeholder-values/[id]": {},
+    "/api/placeholder-sets": {},
+    "/api/notes": {},
+    "/api/placeholders/[id]": {},
+    "/api/placeholders": {},
+    "/api/placeholder-values": {},
+    "/api/tags/[id]": {},
+    "/api/profile": {},
+    "/api/tags": {}
+  }
+}

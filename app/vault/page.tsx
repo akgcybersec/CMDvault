@@ -23,10 +23,12 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Terminal, LogOut, Settings, Copy, Check, Search, User } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 import ReactMarkdown from "react-markdown"
 
 export default function VaultPage() {
   const router = useRouter()
+  const { toast } = useToast()
   const [commands, setCommands] = useState<Command[]>([])
   const [tags, setTags] = useState<Tag[]>([])
   const [placeholderSets, setPlaceholderSets] = useState<PlaceholderSet[]>([])
@@ -203,12 +205,34 @@ export default function VaultPage() {
             </div>
             <button
               type="button"
-              onClick={(e) => {
+              onClick={async (e) => {
                 e.stopPropagation()
-                navigator.clipboard.writeText(line).then(() => {
+
+                try {
+                  if (
+                    typeof navigator === "undefined" ||
+                    !navigator.clipboard ||
+                    typeof navigator.clipboard.writeText !== "function"
+                  ) {
+                    throw new Error("Clipboard API not available")
+                  }
+
+                  await navigator.clipboard.writeText(line)
                   setCopiedSubId(subId)
                   setTimeout(() => setCopiedSubId(null), 2000)
-                })
+
+                  toast({
+                    title: "Command copied",
+                    description: "The command has been copied to your clipboard.",
+                  })
+                } catch (error) {
+                  console.error("Failed to copy command step:", error)
+                  toast({
+                    title: "Copy failed",
+                    description: "Unable to copy command to clipboard. Check browser permissions.",
+                    variant: "destructive",
+                  })
+                }
               }}
               className="hidden group-hover:flex items-center justify-center absolute top-3 right-3 h-6 w-6 rounded border border-border bg-card/80 hover:bg-primary/80 hover:text-primary-foreground transition-colors"
             >
@@ -239,12 +263,34 @@ export default function VaultPage() {
         </div>
         <button
           type="button"
-          onClick={(e) => {
+          onClick={async (e) => {
             e.stopPropagation()
-            navigator.clipboard.writeText(processedCommand).then(() => {
+
+            try {
+              if (
+                typeof navigator === "undefined" ||
+                !navigator.clipboard ||
+                typeof navigator.clipboard.writeText !== "function"
+              ) {
+                throw new Error("Clipboard API not available")
+              }
+
+              await navigator.clipboard.writeText(processedCommand)
               setCopiedSubId(subId)
               setTimeout(() => setCopiedSubId(null), 2000)
-            })
+
+              toast({
+                title: "Command copied",
+                description: "The command has been copied to your clipboard.",
+              })
+            } catch (error) {
+              console.error("Failed to copy command:", error)
+              toast({
+                title: "Copy failed",
+                description: "Unable to copy command to clipboard. Check browser permissions.",
+                variant: "destructive",
+              })
+            }
           }}
           className="hidden group-hover:flex items-center justify-center absolute top-3 right-3 h-6 w-6 rounded border border-border bg-card/80 hover:bg-primary/80 hover:text-primary-foreground transition-colors"
         >
@@ -270,12 +316,30 @@ export default function VaultPage() {
     sessionStorage.setItem("placeholders", JSON.stringify(newPlaceholders))
   }
 
-  const copyToClipboard = (cmd: Command, id: string) => {
+  const copyToClipboard = async (cmd: Command, id: string) => {
     const processedCommand = replacePlaceholders(cmd.command)
-    navigator.clipboard.writeText(processedCommand).then(() => {
+
+    try {
+      if (typeof navigator === "undefined" || !navigator.clipboard || typeof navigator.clipboard.writeText !== "function") {
+        throw new Error("Clipboard API not available")
+      }
+
+      await navigator.clipboard.writeText(processedCommand)
       setCopiedId(id)
       setTimeout(() => setCopiedId(null), 2000)
-    })
+
+      toast({
+        title: "Command copied",
+        description: "The command has been copied to your clipboard.",
+      })
+    } catch (error) {
+      console.error("Failed to copy command:", error)
+      toast({
+        title: "Copy failed",
+        description: "Unable to copy command to clipboard. Check browser permissions.",
+        variant: "destructive",
+      })
+    }
   }
 
   // Get all unique placeholders from filtered commands
@@ -620,9 +684,21 @@ export default function VaultPage() {
                                   const langMatch = typeof className === "string" ? className.match(/language-([\w+-]+)/) : null
                                   const langLabel = langMatch?.[1]?.toUpperCase()
 
-                                  const handleCopyBlock = () => {
-                                    if (typeof text === "string" && text.trim().length > 0) {
-                                      void navigator.clipboard.writeText(text)
+                                  const handleCopyBlock = async () => {
+                                    if (typeof text !== "string" || text.trim().length === 0) return
+
+                                    try {
+                                      if (
+                                        typeof navigator === "undefined" ||
+                                        !navigator.clipboard ||
+                                        typeof navigator.clipboard.writeText !== "function"
+                                      ) {
+                                        throw new Error("Clipboard API not available")
+                                      }
+
+                                      await navigator.clipboard.writeText(text)
+                                    } catch (error) {
+                                      console.error("Failed to copy note code block:", error)
                                     }
                                   }
 
@@ -651,9 +727,21 @@ export default function VaultPage() {
                                 }
 
                                 // True inline code (single line)
-                                const handleCopyInline = () => {
-                                  if (typeof text === "string" && text.trim().length > 0) {
-                                    void navigator.clipboard.writeText(text)
+                                const handleCopyInline = async () => {
+                                  if (typeof text !== "string" || text.trim().length === 0) return
+
+                                  try {
+                                    if (
+                                      typeof navigator === "undefined" ||
+                                      !navigator.clipboard ||
+                                      typeof navigator.clipboard.writeText !== "function"
+                                    ) {
+                                      throw new Error("Clipboard API not available")
+                                    }
+
+                                    await navigator.clipboard.writeText(text)
+                                  } catch (error) {
+                                    console.error("Failed to copy inline note code:", error)
                                   }
                                 }
 
@@ -676,10 +764,10 @@ export default function VaultPage() {
                                 )
                               },
                               li: (props: any) => (
-                                <li className="ml-4 list-disc text-sm text-muted-foreground" {...props} />
+                                <li className="ml-4 list-disc text-sm text-foreground" {...props} />
                               ),
                               p: (props: any) => (
-                                <p className="mb-2 text-sm text-muted-foreground" {...props} />
+                                <p className="mb-2 text-sm text-foreground" {...props} />
                               ),
                             }}
                           >
