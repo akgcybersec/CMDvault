@@ -168,6 +168,35 @@ export default function VaultPage() {
     viewFilter === "commands" || (hasSearch && filteredCommands.length > 0)
   const showNotesSection = viewFilter === "notes" || (hasSearch && filteredNotes.length > 0)
 
+  // Helper function to copy to clipboard with fallback
+  const copyText = async (text: string): Promise<boolean> => {
+    try {
+      // Try modern Clipboard API first
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text)
+        return true
+      }
+      
+      // Fallback to older execCommand method
+      const textArea = document.createElement("textarea")
+      textArea.value = text
+      textArea.style.position = "fixed"
+      textArea.style.left = "-999999px"
+      textArea.style.top = "-999999px"
+      document.body.appendChild(textArea)
+      textArea.focus()
+      textArea.select()
+      
+      const successful = document.execCommand('copy')
+      document.body.removeChild(textArea)
+      
+      return successful
+    } catch (err) {
+      console.error("Copy failed:", err)
+      return false
+    }
+  }
+
   const replacePlaceholders = (command: string) => {
     let result = command
     Object.entries(placeholders).forEach(([key, value]) => {
@@ -208,16 +237,8 @@ export default function VaultPage() {
               onClick={async (e) => {
                 e.stopPropagation()
 
-                try {
-                  if (
-                    typeof navigator === "undefined" ||
-                    !navigator.clipboard ||
-                    typeof navigator.clipboard.writeText !== "function"
-                  ) {
-                    throw new Error("Clipboard API not available")
-                  }
-
-                  await navigator.clipboard.writeText(line)
+                const success = await copyText(line)
+                if (success) {
                   setCopiedSubId(subId)
                   setTimeout(() => setCopiedSubId(null), 2000)
 
@@ -225,8 +246,7 @@ export default function VaultPage() {
                     title: "Command copied",
                     description: "The command has been copied to your clipboard.",
                   })
-                } catch (error) {
-                  console.error("Failed to copy command step:", error)
+                } else {
                   toast({
                     title: "Copy failed",
                     description: "Unable to copy command to clipboard. Check browser permissions.",
@@ -266,16 +286,8 @@ export default function VaultPage() {
           onClick={async (e) => {
             e.stopPropagation()
 
-            try {
-              if (
-                typeof navigator === "undefined" ||
-                !navigator.clipboard ||
-                typeof navigator.clipboard.writeText !== "function"
-              ) {
-                throw new Error("Clipboard API not available")
-              }
-
-              await navigator.clipboard.writeText(processedCommand)
+            const success = await copyText(processedCommand)
+            if (success) {
               setCopiedSubId(subId)
               setTimeout(() => setCopiedSubId(null), 2000)
 
@@ -283,8 +295,7 @@ export default function VaultPage() {
                 title: "Command copied",
                 description: "The command has been copied to your clipboard.",
               })
-            } catch (error) {
-              console.error("Failed to copy command:", error)
+            } else {
               toast({
                 title: "Copy failed",
                 description: "Unable to copy command to clipboard. Check browser permissions.",
@@ -319,12 +330,8 @@ export default function VaultPage() {
   const copyToClipboard = async (cmd: Command, id: string) => {
     const processedCommand = replacePlaceholders(cmd.command)
 
-    try {
-      if (typeof navigator === "undefined" || !navigator.clipboard || typeof navigator.clipboard.writeText !== "function") {
-        throw new Error("Clipboard API not available")
-      }
-
-      await navigator.clipboard.writeText(processedCommand)
+    const success = await copyText(processedCommand)
+    if (success) {
       setCopiedId(id)
       setTimeout(() => setCopiedId(null), 2000)
 
@@ -332,8 +339,7 @@ export default function VaultPage() {
         title: "Command copied",
         description: "The command has been copied to your clipboard.",
       })
-    } catch (error) {
-      console.error("Failed to copy command:", error)
+    } else {
       toast({
         title: "Copy failed",
         description: "Unable to copy command to clipboard. Check browser permissions.",
@@ -686,20 +692,7 @@ export default function VaultPage() {
 
                                   const handleCopyBlock = async () => {
                                     if (typeof text !== "string" || text.trim().length === 0) return
-
-                                    try {
-                                      if (
-                                        typeof navigator === "undefined" ||
-                                        !navigator.clipboard ||
-                                        typeof navigator.clipboard.writeText !== "function"
-                                      ) {
-                                        throw new Error("Clipboard API not available")
-                                      }
-
-                                      await navigator.clipboard.writeText(text)
-                                    } catch (error) {
-                                      console.error("Failed to copy note code block:", error)
-                                    }
+                                    await copyText(text)
                                   }
 
                                   return (
@@ -729,20 +722,7 @@ export default function VaultPage() {
                                 // True inline code (single line)
                                 const handleCopyInline = async () => {
                                   if (typeof text !== "string" || text.trim().length === 0) return
-
-                                  try {
-                                    if (
-                                      typeof navigator === "undefined" ||
-                                      !navigator.clipboard ||
-                                      typeof navigator.clipboard.writeText !== "function"
-                                    ) {
-                                      throw new Error("Clipboard API not available")
-                                    }
-
-                                    await navigator.clipboard.writeText(text)
-                                  } catch (error) {
-                                    console.error("Failed to copy inline note code:", error)
-                                  }
+                                  await copyText(text)
                                 }
 
                                 return (
