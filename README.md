@@ -16,7 +16,7 @@ The app has two main faces:
 ## Features
 
 - 🔐 **Login**
-  - Simple username/password login (default: `admin` / `admin`).
+  - Simple username/password login (default: `admin` / `admin`). Change these via "profile page".
   - Client-side session flag + server-side credential check.
 
 - 🧰 **Commands Vault**
