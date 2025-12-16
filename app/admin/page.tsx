@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import {
   getSession,
   getCommands,
@@ -54,6 +54,7 @@ import ReactMarkdown from "react-markdown"
 
 export default function AdminPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { confirm, ConfirmDialogComponent } = useConfirmDialog()
   const { toast } = useToast()
   const [commands, setCommands] = useState<Command[]>([])
@@ -93,6 +94,22 @@ export default function AdminPage() {
 
   const [placeholderValueForm, setPlaceholderValueForm] = useState<Record<string, string>>({})
 
+  const [pendingCommandId, setPendingCommandId] = useState<string | null>(null)
+  const [pendingNoteId, setPendingNoteId] = useState<string | null>(null)
+  const [dataLoaded, setDataLoaded] = useState(false)
+
+  useEffect(() => {
+    const commandId = searchParams.get("commandId")
+    const noteId = searchParams.get("noteId")
+
+    if (commandId) {
+      setPendingCommandId(commandId)
+    }
+    if (noteId) {
+      setPendingNoteId(noteId)
+    }
+  }, [searchParams])
+
   useEffect(() => {
     if (!getSession()) {
       router.push("/login")
@@ -124,7 +141,50 @@ export default function AdminPage() {
     if (sets.length > 0 && !selectedPlaceholderSet) {
       setSelectedPlaceholderSet(sets[0].id)
     }
+
+    setDataLoaded(true)
   }
+
+  useEffect(() => {
+    if (!dataLoaded) return
+
+    const openFromQuery = async () => {
+      if (pendingCommandId) {
+        const cmd = commands.find((c) => c.id === pendingCommandId)
+        if (cmd) {
+          setActiveTab("commands")
+          await handleEditCommand(cmd)
+        } else {
+          toast({
+            title: "Not found",
+            description: "The requested command could not be found.",
+            variant: "destructive",
+          })
+        }
+        setPendingCommandId(null)
+        router.replace("/editor")
+        return
+      }
+
+      if (pendingNoteId) {
+        const note = notes.find((n) => n.id === pendingNoteId)
+        if (note) {
+          setActiveTab("notes")
+          handleEditNote(note)
+        } else {
+          toast({
+            title: "Not found",
+            description: "The requested note could not be found.",
+            variant: "destructive",
+          })
+        }
+        setPendingNoteId(null)
+        router.replace("/editor")
+      }
+    }
+
+    void openFromQuery()
+  }, [dataLoaded, pendingCommandId, pendingNoteId, commands, notes, router, toast])
 
   const handleNoteSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -217,16 +277,18 @@ export default function AdminPage() {
     e.preventDefault()
 
     try {
+      const normalizedName = formData.name.trim()
+
       // Check for duplicate command name (excluding current command if editing)
       const isDuplicate = commands.some(cmd => 
-        cmd.name.toLowerCase() === formData.name.toLowerCase() && 
+        cmd.name.trim().toLowerCase() === normalizedName.toLowerCase() && 
         (!editingCommand || cmd.id !== editingCommand.id)
       )
 
       if (isDuplicate) {
         toast({
           title: "Duplicate Command Name",
-          description: `A command with the name "${formData.name}" already exists. Please choose a different name.`,
+          description: `A command with the name "${normalizedName}" already exists. Please choose a different name.`,
           variant: "destructive",
         })
         return
@@ -234,30 +296,54 @@ export default function AdminPage() {
 
       // Prepare command data
       let commandData = { ...formData }
-      
-      // For multi-step commands, convert steps to command string
-      if (formData.is_multi_step && commandSteps.length > 0) {
-        commandData.command = commandSteps.map(step => step.command).join('\n')
+
+      if (typeof commandData.name === "string") {
+        commandData.name = commandData.name.trim()
       }
 
+      if (typeof commandData.description === "string") {
+        commandData.description = commandData.description.trim()
+      }
+      
+      // For multi-step commands, convert steps to command string
+      if (formData.is_multi_step) {
+        const normalizedSteps = commandSteps
+          .map((step) => ({
+            ...step,
+            command: (step.command ?? "").trim(),
+            comment: step.comment ?? "",
+          }))
+          .filter((step) => step.command.length > 0)
+
+        if (normalizedSteps.length === 0) {
+          toast({
+            title: "Validation Error",
+            description: "Multi-step commands must include at least one step with a command.",
+            variant: "destructive",
+          })
+          return
+        }
+
+        commandData.command = normalizedSteps.map((step) => step.command).join("\n")
+      }
+
+      let commandId: string
+
       if (editingCommand) {
-        await updateCommand(editingCommand.id, commandData)
-        // Update tags
-        await updateCommandTags(editingCommand.id, selectedTagIds)
+        commandId = editingCommand.id
+        await updateCommand(commandId, commandData)
+        await updateCommandTags(commandId, selectedTagIds)
       } else {
         const newCommand = await addCommand(commandData)
-        // Add tags
+        commandId = newCommand.id
         if (selectedTagIds.length > 0) {
-          await updateCommandTags(newCommand.id, selectedTagIds)
+          await updateCommandTags(commandId, selectedTagIds)
         }
       }
 
       // Save command steps if it's a multi-step command
-      if (formData.is_multi_step && commandSteps.length > 0) {
-        const savedCommand = editingCommand || commands.find(cmd => cmd.name === formData.name)
-        if (savedCommand) {
-          await updateCommandSteps(savedCommand.id, commandSteps)
-        }
+      if (formData.is_multi_step) {
+        await updateCommandSteps(commandId, commandSteps)
       }
 
       resetForm()
@@ -266,7 +352,7 @@ export default function AdminPage() {
       console.error("Failed to save command:", error)
       toast({
         title: "Save Failed",
-        description: "Failed to save command. Check console for details.",
+        description: error instanceof Error ? error.message : "Failed to save command. Check console for details.",
         variant: "destructive",
       })
     }
@@ -1110,7 +1196,7 @@ export default function AdminPage() {
                           </div>
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground mt-1 font-mono">{cmd.description}</p>
+                      <p className="text-sm text-muted-foreground mt-1 font-mono whitespace-pre-wrap">{cmd.description}</p>
                       <div className="bg-background border border-border rounded p-2 mt-3">
                         <code className="text-sm font-mono text-foreground break-all">{cmd.command}</code>
                       </div>

@@ -71,7 +71,18 @@ export function initializeStorage() {
 async function api<T>(input: RequestInfo | URL, init?: RequestInit): Promise<T> {
   const res = await fetch(input, init)
   if (!res.ok) {
-    throw new Error(`API error ${res.status}`)
+    let message = `API error ${res.status}`
+    try {
+      const data = (await res.json()) as { error?: string; message?: string }
+      if (typeof data?.error === "string" && data.error.trim().length > 0) {
+        message = data.error
+      } else if (typeof data?.message === "string" && data.message.trim().length > 0) {
+        message = data.message
+      }
+    } catch {
+      // ignore json parse errors
+    }
+    throw new Error(message)
   }
   return (await res.json()) as T
 }

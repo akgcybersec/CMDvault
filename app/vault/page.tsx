@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { Terminal, LogOut, Settings, Copy, Check, Search, User } from "lucide-react"
+import { Terminal, LogOut, Settings, Copy, Check, Search, User, Edit } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import ReactMarkdown from "react-markdown"
 
@@ -208,29 +208,23 @@ export default function VaultPage() {
   const renderCommand = (cmd: Command) => {
     const processedCommand = replacePlaceholders(cmd.command)
     
-    // Handle newlines for both single and multi-step commands
-    const lines = processedCommand.split("\n").filter((line) => line.trim())
-    
-    if (cmd.is_multi_step || lines.length > 1) {
-      // For multi-step commands or single commands with multiple lines
+    if (cmd.is_multi_step) {
+      // Multi-step commands: render each line as its own step with optional per-step comment.
+      const lines = processedCommand.split("\n").filter((line) => line.trim())
       return lines.map((line, index) => {
-        const stepNumber = cmd.is_multi_step ? index + 1 : null
+        const stepNumber = index + 1
         const cmdSteps = commandSteps[cmd.id] || []
-        const stepData = stepNumber ? cmdSteps.find(s => s.step_number === stepNumber) : null
-        const comment = stepData?.comment || ''
-        const subId = `${cmd.id}-${stepNumber ?? index}`
+        const stepData = cmdSteps.find((s) => s.step_number === stepNumber) || null
+        const comment = stepData?.comment || ""
+        const subId = `${cmd.id}-${stepNumber}`
 
         return (
           <div key={index} className="group relative font-mono text-sm rounded mb-2">
-            {stepNumber && (
-              <div className="flex items-center gap-2 mb-1 text-xs text-muted-foreground">
-                <span className="text-primary font-semibold">Step {stepNumber}</span>
-              </div>
-            )}
+            <div className="flex items-center gap-2 mb-1 text-xs text-muted-foreground">
+              <span className="text-primary font-semibold">Step {stepNumber}</span>
+            </div>
             <div className="flex items-center rounded-md bg-muted/60 px-3 py-2 pr-9">
-              <span className="whitespace-pre-wrap break-words">
-                {line}
-              </span>
+              <span className="whitespace-pre-wrap break-words">{line}</span>
             </div>
             <button
               type="button"
@@ -256,11 +250,7 @@ export default function VaultPage() {
               }}
               className="hidden group-hover:flex items-center justify-center absolute top-3 right-3 h-6 w-6 rounded border border-border bg-card/80 hover:bg-primary/80 hover:text-primary-foreground transition-colors"
             >
-              {copiedSubId === subId ? (
-                <Check className="w-3 h-3" />
-              ) : (
-                <Copy className="w-3 h-3" />
-              )}
+              {copiedSubId === subId ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
             </button>
             {comment && (
               <div className="text-xs text-muted-foreground italic bg-primary/5 border-l-2 border-primary/20 pl-2 py-1 mt-2">
@@ -271,15 +261,13 @@ export default function VaultPage() {
         )
       })
     }
-    
-    // For single commands with only one line
+
+    // Non-multi-step commands: render as a single command block, even if it contains newlines.
     const subId = `${cmd.id}-single`
     return (
       <div className="group relative font-mono text-sm rounded">
         <div className="flex items-center rounded-md bg-muted/60 px-3 py-2 pr-9">
-          <span className="whitespace-pre-wrap break-words">
-            {processedCommand}
-          </span>
+          <span className="whitespace-pre-wrap break-words">{processedCommand}</span>
         </div>
         <button
           type="button"
@@ -305,11 +293,7 @@ export default function VaultPage() {
           }}
           className="hidden group-hover:flex items-center justify-center absolute top-3 right-3 h-6 w-6 rounded border border-border bg-card/80 hover:bg-primary/80 hover:text-primary-foreground transition-colors"
         >
-          {copiedSubId === subId ? (
-            <Check className="w-3 h-3" />
-          ) : (
-            <Copy className="w-3 h-3" />
-          )}
+          {copiedSubId === subId ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
         </button>
       </div>
     )
@@ -364,7 +348,7 @@ export default function VaultPage() {
               </h1>
             </div>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => router.push("/admin")} className="font-mono">
+                <Button variant="outline" size="sm" onClick={() => router.push("/editor")} className="font-mono">
                   <Settings className="w-4 h-4 mr-2" />
                   Editor
                 </Button>
@@ -571,7 +555,17 @@ export default function VaultPage() {
                           )}
                         </div>
                       </div>
-                      <div className="ml-3 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <div className="ml-3 flex-shrink-0 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          onClick={() => router.push(`/editor?commandId=${cmd.id}`)}
+                          className="h-7 w-7 p-0 rounded-full font-mono"
+                          aria-label="Edit in Editor"
+                          title="Edit in Editor"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
                         <Button
                           size="icon"
                           variant="outline"
@@ -579,6 +573,8 @@ export default function VaultPage() {
                             copyToClipboard(cmd, cmd.id)
                           }}
                           className="h-7 w-7 p-0 rounded-full font-mono"
+                          aria-label="Copy command"
+                          title="Copy command"
                         >
                           {copiedId === cmd.id ? (
                             <Check className="w-4 h-4" />
@@ -590,7 +586,7 @@ export default function VaultPage() {
                     </div>
 
                     {/* Description */}
-                    <p className="text-sm text-muted-foreground mb-2 font-mono">
+                    <p className="text-sm text-muted-foreground mb-2 font-mono whitespace-pre-wrap">
                       {isCompact && !isExpanded ? descSnippet : cmd.description}
                     </p>
 
@@ -655,8 +651,20 @@ export default function VaultPage() {
                             )}
                           </div>
                         </div>
-                        <div className="text-muted-foreground text-xs font-mono">
-                          {isExpanded ? "Hide" : "Show"}
+                        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            onClick={() => router.push(`/editor?noteId=${note.id}`)}
+                            className="h-7 w-7 p-0 rounded-full font-mono"
+                            aria-label="Edit in Editor"
+                            title="Edit in Editor"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <div className="text-muted-foreground text-xs font-mono">
+                            {isExpanded ? "Hide" : "Show"}
+                          </div>
                         </div>
                       </div>
                     </div>
