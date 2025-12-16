@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import {
   getSession,
@@ -52,7 +52,7 @@ import { ConfirmDialog, useConfirmDialog } from "@/components/ui/confirm-dialog"
 import { useToast } from "@/hooks/use-toast"
 import ReactMarkdown from "react-markdown"
 
-export default function AdminPage() {
+function AdminPageImpl() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { confirm, ConfirmDialogComponent } = useConfirmDialog()
@@ -1684,5 +1684,13 @@ nmap -sV {{target}}
     </div>
       <ConfirmDialogComponent />
     </>
+  )
+}
+
+export default function AdminPage() {
+  return (
+    <Suspense fallback={null}>
+      <AdminPageImpl />
+    </Suspense>
   )
 }
