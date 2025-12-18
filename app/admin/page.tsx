@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { Suspense, useEffect, useState } from "react"
+import { Suspense, useEffect, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import {
   getSession,
@@ -90,6 +90,10 @@ function AdminPageImpl() {
   const [showPlaceholderAutocomplete, setShowPlaceholderAutocomplete] = useState(false)
   const [autocompleteIndex, setAutocompleteIndex] = useState(0)
   const [commandTextareaRef, setCommandTextareaRef] = useState<HTMLTextAreaElement | null>(null)
+  const stepTextareaRefs = useRef<Array<HTMLTextAreaElement | null>>([])
+  const placeholderAutocompleteListRef = useRef<HTMLDivElement | null>(null)
+  const placeholderAutocompleteSelectedItemRef = useRef<HTMLButtonElement | null>(null)
+  const [placeholderAutocompletePosition, setPlaceholderAutocompletePosition] = useState<{ top: number; left: number } | null>(null)
   const [activeStepIndexForAutocomplete, setActiveStepIndexForAutocomplete] = useState<number | null>(null)
 
   const [placeholderValueForm, setPlaceholderValueForm] = useState<Record<string, string>>({})
@@ -124,6 +128,25 @@ function AdminPageImpl() {
       void loadPlaceholderValues(selectedPlaceholderSet)
     }
   }, [selectedPlaceholderSet])
+
+  useEffect(() => {
+    if (!showPlaceholderAutocomplete) return
+    const listEl = placeholderAutocompleteListRef.current
+    const selectedEl = placeholderAutocompleteSelectedItemRef.current
+    if (!listEl || !selectedEl) return
+
+    // Ensure the highlighted item stays visible inside the scroll container
+    const itemTop = selectedEl.offsetTop
+    const itemBottom = itemTop + selectedEl.offsetHeight
+    const viewTop = listEl.scrollTop
+    const viewBottom = viewTop + listEl.clientHeight
+
+    if (itemTop < viewTop) {
+      listEl.scrollTop = itemTop
+    } else if (itemBottom > viewBottom) {
+      listEl.scrollTop = itemBottom - listEl.clientHeight
+    }
+  }, [autocompleteIndex, showPlaceholderAutocomplete])
 
   const loadData = async () => {
     const [cmds, tgs, phs, sets, nts] = await Promise.all([
@@ -705,6 +728,47 @@ function AdminPageImpl() {
     setIsAdding(false)
   }
 
+  const getCaretViewportPosition = (textarea: HTMLTextAreaElement, caretPos: number) => {
+    const computed = window.getComputedStyle(textarea)
+    const div = document.createElement("div")
+
+    div.style.position = "absolute"
+    div.style.visibility = "hidden"
+    div.style.whiteSpace = "pre-wrap"
+    div.style.wordWrap = "break-word"
+
+    div.style.fontFamily = computed.fontFamily
+    div.style.fontSize = computed.fontSize
+    div.style.fontWeight = computed.fontWeight
+    div.style.letterSpacing = computed.letterSpacing
+    div.style.lineHeight = computed.lineHeight
+    div.style.textTransform = computed.textTransform
+    div.style.padding = computed.padding
+    div.style.border = computed.border
+    div.style.boxSizing = computed.boxSizing
+    div.style.width = `${textarea.clientWidth}px`
+
+    const value = textarea.value
+    div.textContent = value.slice(0, caretPos)
+
+    const span = document.createElement("span")
+    span.textContent = value.slice(caretPos) || "."
+    div.appendChild(span)
+
+    document.body.appendChild(div)
+
+    const spanRect = span.getBoundingClientRect()
+    const divRect = div.getBoundingClientRect()
+    document.body.removeChild(div)
+
+    const taRect = textarea.getBoundingClientRect()
+    const left = taRect.left + (spanRect.left - divRect.left) - textarea.scrollLeft
+    const top = taRect.top + (spanRect.top - divRect.top) - textarea.scrollTop
+
+    const lineHeight = Number.parseFloat(computed.lineHeight) || 16
+    return { left, top: top + lineHeight }
+  }
+
   const handleCommandInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value
     setFormData({ ...formData, command: value })
@@ -717,8 +781,10 @@ function AdminPageImpl() {
       setShowPlaceholderAutocomplete(true)
       setAutocompleteIndex(0)
       setActiveStepIndexForAutocomplete(null)
+      setPlaceholderAutocompletePosition(getCaretViewportPosition(e.target, cursorPos))
     } else {
       setShowPlaceholderAutocomplete(false)
+      setPlaceholderAutocompletePosition(null)
     }
   }
 
@@ -736,9 +802,11 @@ function AdminPageImpl() {
       setShowPlaceholderAutocomplete(true)
       setAutocompleteIndex(0)
       setActiveStepIndexForAutocomplete(index)
+      setPlaceholderAutocompletePosition(getCaretViewportPosition(e.target, cursorPos))
     } else {
       setShowPlaceholderAutocomplete(false)
       setActiveStepIndexForAutocomplete(null)
+      setPlaceholderAutocompletePosition(null)
     }
   }
 
@@ -753,12 +821,26 @@ function AdminPageImpl() {
 
       const updatedSteps = [...commandSteps]
       const current = updatedSteps[stepIndex]
-      const currentText = current.command || ""
-      const newText = currentText.replace(/\{\{$/, `{{${placeholder}}}`)
-      updatedSteps[stepIndex] = { ...current, command: newText }
+      const textarea = stepTextareaRefs.current[stepIndex]
+      const value = textarea?.value ?? current.command ?? ""
+      const cursorPos = textarea?.selectionStart ?? value.length
+      const beforeCursor = value.slice(0, cursorPos)
+      const afterCursor = value.slice(cursorPos)
+      const newValue = beforeCursor.replace(/\{\{$/, `{{${placeholder}}}`) + afterCursor
+
+      updatedSteps[stepIndex] = { ...current, command: newValue }
       setCommandSteps(updatedSteps)
       setShowPlaceholderAutocomplete(false)
       setActiveStepIndexForAutocomplete(null)
+      setPlaceholderAutocompletePosition(null)
+
+      if (textarea) {
+        setTimeout(() => {
+          textarea.focus()
+          const newCursorPos = beforeCursor.replace(/\{\{$/, `{{${placeholder}}}`).length
+          textarea.setSelectionRange(newCursorPos, newCursorPos)
+        }, 0)
+      }
       return
     }
 
@@ -772,6 +854,7 @@ function AdminPageImpl() {
       const newValue = beforeCursor.replace(/\{\{$/, `{{${placeholder}}}`) + afterCursor
       setFormData({ ...formData, command: newValue })
       setShowPlaceholderAutocomplete(false)
+      setPlaceholderAutocompletePosition(null)
       // Focus back and set cursor after inserted placeholder
       setTimeout(() => {
         commandTextareaRef.focus()
@@ -791,16 +874,31 @@ function AdminPageImpl() {
 
     const updatedSteps = [...commandSteps]
     const current = updatedSteps[derivedIndex]
-    const currentText = current.command || ""
-    const newText = currentText.replace(/\{\{$/, `{{${placeholder}}}`)
-    updatedSteps[derivedIndex] = { ...current, command: newText }
+    const textarea = stepTextareaRefs.current[derivedIndex]
+    const value = textarea?.value ?? current.command ?? ""
+    const cursorPos = textarea?.selectionStart ?? value.length
+    const beforeCursor = value.slice(0, cursorPos)
+    const afterCursor = value.slice(cursorPos)
+    const newValue = beforeCursor.replace(/\{\{$/, `{{${placeholder}}}`) + afterCursor
+
+    updatedSteps[derivedIndex] = { ...current, command: newValue }
     setCommandSteps(updatedSteps)
     setShowPlaceholderAutocomplete(false)
     setActiveStepIndexForAutocomplete(null)
+    setPlaceholderAutocompletePosition(null)
+
+    if (textarea) {
+      setTimeout(() => {
+        textarea.focus()
+        const newCursorPos = beforeCursor.replace(/\{\{$/, `{{${placeholder}}}`).length
+        textarea.setSelectionRange(newCursorPos, newCursorPos)
+      }, 0)
+    }
   }
 
   const handleAutocompleteKeyDown = (e: React.KeyboardEvent, stepIndex?: number) => {
     if (!showPlaceholderAutocomplete) return
+    if (placeholders.length === 0) return
     if (e.key === "ArrowDown") {
       e.preventDefault()
       setAutocompleteIndex((prev) => (prev + 1) % placeholders.length)
@@ -816,6 +914,7 @@ function AdminPageImpl() {
       e.preventDefault()
       setShowPlaceholderAutocomplete(false)
       setActiveStepIndexForAutocomplete(null)
+      setPlaceholderAutocompletePosition(null)
     }
   }
 
@@ -1011,12 +1110,28 @@ function AdminPageImpl() {
                         </p>
 
                         {showPlaceholderAutocomplete && placeholders.length > 0 && activeStepIndexForAutocomplete === null && (
-                          <div className="absolute left-0 top-full mt-2 z-50 w-56 rounded-md border border-primary/60 bg-card/95 shadow-lg shadow-black/60">
-                            <div className="max-h-40 overflow-y-auto overscroll-contain">
+                          <div
+                            className="z-50 w-56 rounded-md border border-primary/60 bg-card/95 shadow-lg shadow-black/60"
+                            style={
+                              placeholderAutocompletePosition
+                                ? {
+                                    position: "fixed",
+                                    left: placeholderAutocompletePosition.left,
+                                    top: placeholderAutocompletePosition.top,
+                                  }
+                                : { position: "absolute", left: 0, top: "100%", marginTop: "0.5rem" }
+                            }
+                          >
+                            <div ref={placeholderAutocompleteListRef} className="max-h-40 overflow-y-auto overscroll-contain">
                               {placeholders.map((ph, idx) => (
                                 <button
                                   key={ph.id}
+                                  ref={idx === autocompleteIndex ? placeholderAutocompleteSelectedItemRef : null}
                                   type="button"
+                                  onMouseDown={(e) => {
+                                    // Prevent textarea losing focus before we insert
+                                    e.preventDefault()
+                                  }}
                                   onClick={() => insertPlaceholder(ph.name)}
                                   onMouseEnter={() => setAutocompleteIndex(idx)}
                                   className={`w-full text-left px-3 py-2 text-xs font-mono transition-colors ${
@@ -1077,21 +1192,40 @@ function AdminPageImpl() {
                                 
                                 <div className="space-y-2 relative">
                                   <Textarea
+                                    ref={(el) => {
+                                      stepTextareaRefs.current[index] = el
+                                    }}
                                     value={step.command}
                                     onChange={(e) => handleStepCommandInput(index, e)}
-                                    onKeyDown={handleAutocompleteKeyDown}
+                                    onKeyDown={(e) => handleAutocompleteKeyDown(e, index)}
                                     className="font-mono text-sm"
                                     placeholder="Enter command for this step..."
                                     rows={2}
                                   />
 
                                   {showPlaceholderAutocomplete && placeholders.length > 0 && activeStepIndexForAutocomplete === index && (
-                                    <div className="absolute left-0 top-full mt-2 z-50 w-56 rounded-md border border-primary/60 bg-card/95 shadow-lg shadow-black/60">
-                                      <div className="max-h-40 overflow-y-auto overscroll-contain">
+                                    <div
+                                      className="z-50 w-56 rounded-md border border-primary/60 bg-card/95 shadow-lg shadow-black/60"
+                                      style={
+                                        placeholderAutocompletePosition
+                                          ? {
+                                              position: "fixed",
+                                              left: placeholderAutocompletePosition.left,
+                                              top: placeholderAutocompletePosition.top,
+                                            }
+                                          : { position: "absolute", left: 0, top: "100%", marginTop: "0.5rem" }
+                                      }
+                                    >
+                                      <div ref={placeholderAutocompleteListRef} className="max-h-40 overflow-y-auto overscroll-contain">
                                         {placeholders.map((ph, idx) => (
                                           <button
                                             key={ph.id}
+                                            ref={idx === autocompleteIndex ? placeholderAutocompleteSelectedItemRef : null}
                                             type="button"
+                                            onMouseDown={(e) => {
+                                              // Prevent textarea losing focus before we insert
+                                              e.preventDefault()
+                                            }}
                                             onClick={() => insertPlaceholder(ph.name)}
                                             onMouseEnter={() => setAutocompleteIndex(idx)}
                                             className={`w-full text-left px-3 py-2 text-xs font-mono transition-colors ${

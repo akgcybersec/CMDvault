@@ -1,4 +1,4 @@
-# Use Node.js 18 Alpine as base image
+# Use Node.js Alpine as base image
 FROM node:20-alpine AS base
 
 # Install dependencies only when needed
@@ -29,11 +29,16 @@ FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV production
+# Disable Next.js telemetry in runtime by default
+ENV NEXT_TELEMETRY_DISABLED 1
 # Uncomment the following line in case you want to disable telemetry during runtime.
 # ENV NEXT_TELEMETRY_DISABLED 1
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
+
+# Some native modules (e.g. better-sqlite3) may require glibc compatibility on Alpine
+RUN apk add --no-cache libc6-compat
 
 COPY --from=builder /app/public ./public
 
