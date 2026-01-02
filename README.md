@@ -167,7 +167,6 @@ Open the **Editor** from the Vault header.
 - If exposing beyond localhost, ensure you:
   - Use HTTPS/behind a VPN or tunnel.
   - Protect the SQLite file and server.
-  - Add proper authentication/session hardening as needed for your environment.
 
 ---
 
