@@ -2,10 +2,6 @@
 
 Personal command and notes vault for IT engineers built with **Next.js**, **TypeScript**, and **SQLite**.
 
-## Demo
-
-[![Watch the video](https://github.com/akgcybersec/CMDvault/blob/main/video/thumbnail.png)](https://github.com/akgcybersec/CMDvault/raw/refs/heads/main/video/MovieGithub.m4v)
-
 The app has two main faces:
 
 - **Vault** – where you quickly search, filter, and copy commands and notes.
@@ -33,6 +29,8 @@ The app has two main faces:
   - Notes can be tagged using the same tag system as commands.
   - Global search covers note titles and content.
   - When *Expand view* is off, collapsed notes show only the title; when on, they show a short content snippet.
+  - Paste or upload images in the Editor; images render in the Vault with a default inline width and click-to-zoom.
+  - Optional image sizing in Markdown alt text: `alt | w=250 | h=140`.
 
 - 🏷️ **Tags**
   - Central tag library managed in the **Editor**.
@@ -50,6 +48,7 @@ The app has two main faces:
   - Compact vs expanded view toggle for Vault.
   - Smooth animations on command expansion.
   - Clean Editor with tabbed navigation (Commands, Notes, Tags, Placeholders, Placeholder Sets).
+  - Delete is available directly from the edit forms (with confirmation).
 
 ---
 
@@ -93,12 +92,38 @@ Then open:
 
 ---
 
+## Run with Docker
+
+This repo includes a `Dockerfile` + `docker-compose.yml` for production-like runs.
+
+### Start
+
+```bash
+docker compose up -d --build
+```
+
+Then open:
+
+- `http://localhost:3000/login`
+
+### Data persistence
+
+By default, Docker Compose uses a named volume mounted at `/app/data` to persist the SQLite DB and uploads across restarts.
+
+### Stop
+
+```bash
+docker compose down
+```
+
+---
+
 ## Usage Overview
 
 ### Vault
 
 - Use the **search bar** to search commands and notes simultaneously.
-- Use the **View** dropdown to toggle between Commands / Notes when you are not searching.
+- Use the **View** dropdown to toggle between **All / Commands / Notes**.
 - Use the **tag filter row** to filter by tags (affects both commands and notes).
 - Use the **Expand view** toggle:
   - Off (default): compact cards; commands expand on hover, notes show only titles.
@@ -116,6 +141,7 @@ Open the **Editor** from the Vault header.
 - **Notes tab**
   - Add/edit/delete Markdown notes.
   - Attach tags via pill-style selectors.
+  - Paste or upload images; the editor inserts Markdown for you.
 
 - **Tags tab**
   - Manage tag names used across commands and notes.
