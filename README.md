@@ -66,16 +66,23 @@ The app has two main faces:
 
 - Node.js (LTS recommended).
 
-### Install dependencies
-
-```bash
-npm install
-```
-
 ### Run the dev server
 
 ```bash
+git clone https://github.com/akgcybersec/CMDvault
+cd CMDvault
+npm install
 npm run dev
+```
+
+### Run the prod server
+
+```bash
+git clone https://github.com/akgcybersec/CMDvault
+cd CMDvault
+npm install
+npm run build
+npm start
 ```
 
 Then open:
