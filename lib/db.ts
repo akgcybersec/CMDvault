@@ -141,6 +141,16 @@ if (!isBuilding) {
     db.prepare("INSERT OR IGNORE INTO placeholders (name, created_at) VALUES (?, ?)").run("url", now)
     db.prepare("INSERT OR IGNORE INTO placeholders (name, created_at) VALUES (?, ?)").run("wordlist", now)
   }
+
+  const noteCount = (db.prepare("SELECT COUNT(*) as count FROM notes").get() as { count: number }).count
+  if (noteCount === 0) {
+    const now = new Date().toISOString()
+    db.prepare("INSERT INTO notes (title, content, created_at) VALUES (?, ?, ?)").run(
+      "Getting Started",
+      "Welcome to CMDvault.\n\nUse the Vault to search and copy commands and notes. Use the Editor to manage tags, placeholders, and multi-step commands.",
+      now,
+    )
+  }
 }
 
 export default db

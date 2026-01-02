@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import {
   getSession,
   getCommands,
@@ -37,7 +38,7 @@ export default function VaultPage() {
   const [selectedPlaceholderSet, setSelectedPlaceholderSet] = useState<string>("none")
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedTags, setSelectedTags] = useState<string[]>([])
-  const [viewFilter, setViewFilter] = useState<"commands" | "notes">("commands")
+  const [viewFilter, setViewFilter] = useState<"all" | "commands" | "notes">("all")
   const [compactView, setCompactView] = useState(false)
   const [expandedCommandId, setExpandedCommandId] = useState<string | null>(null)
   const [placeholders, setPlaceholders] = useState<Record<string, string>>({})
@@ -57,11 +58,7 @@ export default function VaultPage() {
       const raw = sessionStorage.getItem("vaultViewPrefs")
       if (raw) {
         const parsed = JSON.parse(raw) as {
-          viewFilter?: "commands" | "notes"
           compactView?: boolean
-        }
-        if (parsed.viewFilter === "commands" || parsed.viewFilter === "notes") {
-          setViewFilter(parsed.viewFilter)
         }
         if (typeof parsed.compactView === "boolean") {
           setCompactView(parsed.compactView)
@@ -77,12 +74,12 @@ export default function VaultPage() {
   // Persist view preferences for this session
   useEffect(() => {
     try {
-      const data = JSON.stringify({ viewFilter, compactView })
+      const data = JSON.stringify({ compactView })
       sessionStorage.setItem("vaultViewPrefs", data)
     } catch {
       // ignore storage failures
     }
-  }, [viewFilter, compactView])
+  }, [compactView])
 
   useEffect(() => {
     if (selectedPlaceholderSet && selectedPlaceholderSet !== "none") {
@@ -164,9 +161,8 @@ export default function VaultPage() {
   })
 
   const hasSearch = searchQuery.trim().length > 0
-  const showCommandsSection =
-    viewFilter === "commands" || (hasSearch && filteredCommands.length > 0)
-  const showNotesSection = viewFilter === "notes" || (hasSearch && filteredNotes.length > 0)
+  const showCommandsSection = viewFilter === "all" || viewFilter === "commands"
+  const showNotesSection = viewFilter === "all" || viewFilter === "notes"
 
   // Helper function to copy to clipboard with fallback
   const copyText = async (text: string): Promise<boolean> => {
@@ -343,9 +339,11 @@ export default function VaultPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Terminal className="w-8 h-8 text-primary" />
-              <h1 className="text-2xl font-bold font-mono text-foreground">
-                CMDvault
-              </h1>
+              <Link href="/vault" aria-label="Go to main page">
+                <h1 className="text-2xl font-bold font-mono text-foreground">
+                  CMDvault
+                </h1>
+              </Link>
             </div>
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" onClick={() => router.push("/editor")} className="font-mono">
@@ -383,7 +381,26 @@ export default function VaultPage() {
                 />
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto justify-end">
+              <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto md:justify-end">
+                {/* View filter: commands / notes */}
+                <div className="w-full sm:w-40">
+                  <Select
+                    value={viewFilter}
+                    onValueChange={(value) => setViewFilter(value as "all" | "commands" | "notes")}
+                  >
+                    <SelectTrigger className="w-full font-mono h-11 text-xs bg-card/95 border border-primary/50 text-foreground shadow-sm shadow-black/40 hover:border-primary hover:shadow-md focus:ring-2 focus:ring-primary/30">
+                      <SelectValue placeholder="View">
+                        {viewFilter === "all" ? "All" : viewFilter === "commands" ? "Commands" : "Notes"}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all" className="font-mono text-xs">All</SelectItem>
+                      <SelectItem value="commands" className="font-mono text-xs">Commands</SelectItem>
+                      <SelectItem value="notes" className="font-mono text-xs">Notes</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 {/* Placeholder set select */}
                 {placeholderSets.length > 0 && (
                   <div className="w-full sm:w-64">
@@ -406,24 +423,6 @@ export default function VaultPage() {
                     </Select>
                   </div>
                 )}
-
-                {/* View filter: commands / notes */}
-                <div className="w-full sm:w-40">
-                  <Select
-                    value={viewFilter}
-                    onValueChange={(value) => setViewFilter(value as "commands" | "notes")}
-                  >
-                    <SelectTrigger className="w-full font-mono h-11 text-xs bg-background/80 border-border/80">
-                      <SelectValue placeholder="View">
-                        {viewFilter === "commands" ? "Commands" : "Notes"}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="commands" className="font-mono text-xs">Commands</SelectItem>
-                      <SelectItem value="notes" className="font-mono text-xs">Notes</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
             </div>
 
