@@ -26,7 +26,14 @@ This application can be easily deployed using Docker and Docker Compose.
 ## Configuration
 
 ### Database Persistence
-The SQLite database is persisted in a Docker volume at `./data`. The database will be automatically created on first run.
+The SQLite database (and uploaded files) are persisted in a named Docker volume called `data`, mounted inside the container at `/app/data`. The database will be automatically created on first run.
+
+If you prefer persisting data to a local folder on the host (e.g. `./data`), change the `volumes` section in `docker-compose.yml` from a named volume to a bind mount:
+
+```yaml
+volumes:
+  - ./data:/app/data
+```
 
 ### Environment Variables
 You can customize the deployment by modifying the `docker-compose.yml` file:
