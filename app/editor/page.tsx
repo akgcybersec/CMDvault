@@ -87,6 +87,9 @@ function EditorPageImpl() {
   const [commandSteps, setCommandSteps] = useState<{ step_number: number; command: string; comment: string }[]>([])
   const [expandedEditor, setExpandedEditor] = useState(false)
 
+  const noteContentTextareaRef = useRef<HTMLTextAreaElement | null>(null)
+  const [isUploadingNoteImage, setIsUploadingNoteImage] = useState(false)
+
   // Placeholder autocomplete state
   const [showPlaceholderAutocomplete, setShowPlaceholderAutocomplete] = useState(false)
   const [autocompleteIndex, setAutocompleteIndex] = useState(0)
@@ -1737,8 +1740,76 @@ function EditorPageImpl() {
                     <div className="border-2 border-border rounded-lg overflow-hidden bg-muted/30">
                       <Textarea
                         id="noteContent"
+                        ref={noteContentTextareaRef}
                         value={noteForm.content}
                         onChange={(e) => setNoteForm({ ...noteForm, content: e.target.value })}
+                        onPaste={async (e) => {
+                          const items = e.clipboardData?.items
+                          if (!items || items.length === 0) return
+
+                          const imageItem = Array.from(items).find((it) => it.type?.startsWith("image/"))
+                          if (!imageItem) return
+
+                          const file = imageItem.getAsFile()
+                          if (!file) return
+
+                          e.preventDefault()
+                          setIsUploadingNoteImage(true)
+
+                          try {
+                            const form = new FormData()
+                            form.append("file", file)
+
+                            const res = await fetch("/api/uploads", {
+                              method: "POST",
+                              body: form,
+                            })
+
+                            if (!res.ok) {
+                              throw new Error(`Upload failed (${res.status})`)
+                            }
+
+                            const data = (await res.json()) as { url?: string }
+                            if (!data?.url) {
+                              throw new Error("Upload failed")
+                            }
+
+                            const md = `\n\n![pasted image|w=600](${data.url})\n\n`
+                            const textarea = noteContentTextareaRef.current
+                            if (!textarea) {
+                              setNoteForm((prev) => ({ ...prev, content: `${prev.content}${md}` }))
+                              return
+                            }
+
+                            const start = textarea.selectionStart ?? noteForm.content.length
+                            const end = textarea.selectionEnd ?? start
+                            const before = noteForm.content.slice(0, start)
+                            const after = noteForm.content.slice(end)
+                            const next = `${before}${md}${after}`
+                            setNoteForm((prev) => ({ ...prev, content: next }))
+
+                            // restore caret after inserted markdown
+                            setTimeout(() => {
+                              textarea.focus()
+                              const pos = start + md.length
+                              textarea.setSelectionRange(pos, pos)
+                            }, 0)
+
+                            toast({
+                              title: "Image pasted",
+                              description: "Image uploaded and inserted into the note.",
+                            })
+                          } catch (err) {
+                            console.error(err)
+                            toast({
+                              title: "Paste image failed",
+                              description: "Could not upload image from clipboard.",
+                              variant: "destructive",
+                            })
+                          } finally {
+                            setIsUploadingNoteImage(false)
+                          }
+                        }}
                         className="font-mono text-sm border-0 bg-transparent resize-none focus:ring-0 focus:border-0"
                         placeholder="# Note title
 

@@ -58,6 +58,9 @@ Thumbs.db
 *.sqlite
 *.sqlite3
 
+# App data (SQLite file + uploaded images)
+data/
+
 # Logs
 logs
 *.log

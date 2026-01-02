@@ -753,6 +753,45 @@ export default function VaultPage() {
                               li: (props: any) => (
                                 <li className="ml-4 list-disc text-sm text-foreground" {...props} />
                               ),
+                              img: (props: any) => (
+                                (() => {
+                                  const rawAlt = typeof props.alt === "string" ? props.alt : ""
+                                  const parts = rawAlt.split("|").map((p: string) => p.trim()).filter(Boolean)
+
+                                  const cleanAltParts: string[] = []
+                                  let width: number | undefined
+                                  let height: number | undefined
+
+                                  for (const part of parts) {
+                                    const w = part.match(/^w=(\d+)$/i)
+                                    const h = part.match(/^h=(\d+)$/i)
+                                    if (w) {
+                                      width = Number(w[1])
+                                      continue
+                                    }
+                                    if (h) {
+                                      height = Number(h[1])
+                                      continue
+                                    }
+                                    cleanAltParts.push(part)
+                                  }
+
+                                  const cleanAlt = cleanAltParts.join(" | ")
+
+                                  return (
+                                    <img
+                                      {...props}
+                                      alt={cleanAlt}
+                                      style={{
+                                        maxWidth: "100%",
+                                        width: width ? `${width}px` : undefined,
+                                        height: height ? `${height}px` : undefined,
+                                      }}
+                                      className="h-auto rounded-lg border border-primary/30 shadow-sm shadow-black/40"
+                                    />
+                                  )
+                                })()
+                              ),
                               p: (props: any) => (
                                 <p className="mb-2 text-sm text-foreground" {...props} />
                               ),
