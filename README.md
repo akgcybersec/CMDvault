@@ -173,4 +173,6 @@ Open the **Editor** from the Vault header.
 
 ## License / Status
 
+Licensed under the MIT License.
+
 This project is a work-in-progress utility for personal pentesting workflows. Adapt it to your needs, extend the schema, or integrate it into your own tooling as desired.
