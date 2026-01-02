@@ -46,7 +46,12 @@ export default function VaultPage() {
   const [copiedSubId, setCopiedSubId] = useState<string | null>(null)
   const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null)
   const [commandSteps, setCommandSteps] = useState<Record<string, CommandStep[]>>({})
-  const [lightboxImage, setLightboxImage] = useState<{ src: string; alt: string } | null>(null)
+  const [lightboxImage, setLightboxImage] = useState<{
+    src: string
+    alt: string
+    naturalWidth?: number
+    naturalHeight?: number
+  } | null>(null)
 
   useEffect(() => {
     if (!getSession()) {
@@ -796,7 +801,7 @@ export default function VaultPage() {
                                       alt={cleanAlt}
                                       style={{
                                         maxWidth: "100%",
-                                        width: width ? `${width}px` : undefined,
+                                        width: width ? `${width}px` : "400px",
                                         height: height ? `${height}px` : undefined,
                                       }}
                                       className="h-auto rounded-lg border border-primary/30 shadow-sm shadow-black/40 cursor-zoom-in"
@@ -852,9 +857,29 @@ export default function VaultPage() {
               <img
                 src={lightboxImage.src}
                 alt={lightboxImage.alt}
-                className="max-w-[95vw] max-h-[90vh] rounded-lg border border-primary/30 shadow-xl"
+                onLoad={(e) => {
+                  const img = e.currentTarget
+                  const naturalWidth = img.naturalWidth
+                  const naturalHeight = img.naturalHeight
+                  setLightboxImage((prev) =>
+                    prev ? { ...prev, naturalWidth, naturalHeight } : prev,
+                  )
+                }}
+                style={{
+                  maxWidth: "95vw",
+                  maxHeight: "90vh",
+                  width: lightboxImage.naturalWidth ? `${lightboxImage.naturalWidth}px` : undefined,
+                  height: lightboxImage.naturalHeight ? `${lightboxImage.naturalHeight}px` : undefined,
+                }}
+                className="rounded-lg border border-primary/30 shadow-xl"
               />
-              <div className="mt-2 text-center text-xs text-muted-foreground font-mono">Press Esc to close</div>
+              <div className="mt-2 text-center text-xs text-muted-foreground font-mono">
+                {typeof lightboxImage.naturalWidth === "number" && typeof lightboxImage.naturalHeight === "number"
+                  ? `${lightboxImage.naturalWidth}×${lightboxImage.naturalHeight}px`
+                  : ""}
+                {" "}
+                Press Esc to close
+              </div>
             </div>
           </div>
         )}
