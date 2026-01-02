@@ -46,6 +46,7 @@ export default function VaultPage() {
   const [copiedSubId, setCopiedSubId] = useState<string | null>(null)
   const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null)
   const [commandSteps, setCommandSteps] = useState<Record<string, CommandStep[]>>({})
+  const [lightboxImage, setLightboxImage] = useState<{ src: string; alt: string } | null>(null)
 
   useEffect(() => {
     if (!getSession()) {
@@ -80,6 +81,17 @@ export default function VaultPage() {
       // ignore storage failures
     }
   }, [compactView])
+
+  useEffect(() => {
+    if (!lightboxImage) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setLightboxImage(null)
+      }
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [lightboxImage])
 
   useEffect(() => {
     if (selectedPlaceholderSet && selectedPlaceholderSet !== "none") {
@@ -787,7 +799,12 @@ export default function VaultPage() {
                                         width: width ? `${width}px` : undefined,
                                         height: height ? `${height}px` : undefined,
                                       }}
-                                      className="h-auto rounded-lg border border-primary/30 shadow-sm shadow-black/40"
+                                      className="h-auto rounded-lg border border-primary/30 shadow-sm shadow-black/40 cursor-zoom-in"
+                                      onClick={() => {
+                                        const src = typeof props.src === "string" ? props.src : ""
+                                        if (!src) return
+                                        setLightboxImage({ src, alt: cleanAlt || "Image" })
+                                      }}
                                     />
                                   )
                                 })()
@@ -815,6 +832,32 @@ export default function VaultPage() {
             )}
           </div>
         ) : null}
+        {lightboxImage && (
+          <div
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setLightboxImage(null)}
+          >
+            <div
+              className="relative max-w-[95vw] max-h-[90vh]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                aria-label="Close image"
+                onClick={() => setLightboxImage(null)}
+                className="absolute -top-3 -right-3 h-9 w-9 rounded-full border border-border bg-card/90 text-foreground hover:bg-card flex items-center justify-center"
+              >
+                ×
+              </button>
+              <img
+                src={lightboxImage.src}
+                alt={lightboxImage.alt}
+                className="max-w-[95vw] max-h-[90vh] rounded-lg border border-primary/30 shadow-xl"
+              />
+              <div className="mt-2 text-center text-xs text-muted-foreground font-mono">Press Esc to close</div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   )

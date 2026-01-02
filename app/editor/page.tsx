@@ -250,8 +250,26 @@ function EditorPageImpl() {
       title: "Delete Note",
       message: "Are you sure you want to delete this note? This action cannot be undone.",
       onConfirm: async () => {
-        await deleteNote(id)
-        await loadData()
+        try {
+          await deleteNote(id)
+          if (editingNote?.id === id) {
+            setEditingNote(null)
+            setIsAdding(false)
+            resetNoteForm()
+          }
+          await loadData()
+          toast({
+            title: "Note deleted",
+            description: "The note has been deleted.",
+          })
+        } catch (error) {
+          console.error("Failed to delete note:", error)
+          toast({
+            title: "Delete failed",
+            description: error instanceof Error ? error.message : "Failed to delete note. Check console for details.",
+            variant: "destructive",
+          })
+        }
       },
       confirmText: "Delete",
       cancelText: "Cancel",
@@ -390,8 +408,26 @@ function EditorPageImpl() {
       title: "Delete Command",
       message: "Are you sure you want to delete this command? This action cannot be undone.",
       onConfirm: async () => {
-        await deleteCommand(id)
-        await loadData()
+        try {
+          await deleteCommand(id)
+          if (editingCommand?.id === id) {
+            setEditingCommand(null)
+            setIsAdding(false)
+            resetForm()
+          }
+          await loadData()
+          toast({
+            title: "Command deleted",
+            description: "The command has been deleted.",
+          })
+        } catch (error) {
+          console.error("Failed to delete command:", error)
+          toast({
+            title: "Delete failed",
+            description: error instanceof Error ? error.message : "Failed to delete command. Check console for details.",
+            variant: "destructive",
+          })
+        }
       },
       confirmText: "Delete",
       cancelText: "Cancel",
@@ -1299,14 +1335,27 @@ function EditorPageImpl() {
                     />
                   </div>
 
-                  <div className="flex gap-2">
-                    <Button type="submit" className="font-mono">
-                      <Save className="w-4 h-4 mr-2" />
-                      {editingCommand ? "Update" : "Create"}
-                    </Button>
-                    <Button type="button" variant="outline" onClick={resetForm} className="font-mono bg-transparent">
-                      Cancel
-                    </Button>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex gap-2">
+                      <Button type="submit" className="font-mono">
+                        <Save className="w-4 h-4 mr-2" />
+                        {editingCommand ? "Update" : "Create"}
+                      </Button>
+                      <Button type="button" variant="outline" onClick={resetForm} className="font-mono bg-transparent">
+                        Cancel
+                      </Button>
+                    </div>
+                    {editingCommand && (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        onClick={() => handleDeleteCommand(editingCommand.id)}
+                        className="font-mono"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete
+                      </Button>
+                    )}
                   </div>
                 </form>
               </div>
@@ -1836,19 +1885,32 @@ nmap -sV {{target}}
                     </div>
                   </div>
 
-                  <div className="flex gap-2">
-                    <Button type="submit" className="font-mono">
-                      <Save className="w-4 h-4 mr-2" />
-                      {editingNote ? "Update" : "Create"}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={resetNoteForm}
-                      className="font-mono bg-transparent"
-                    >
-                      Cancel
-                    </Button>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex gap-2">
+                      <Button type="submit" className="font-mono">
+                        <Save className="w-4 h-4 mr-2" />
+                        {editingNote ? "Update" : "Create"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={resetNoteForm}
+                        className="font-mono bg-transparent"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                    {editingNote && (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        onClick={() => handleDeleteNote(editingNote.id)}
+                        className="font-mono"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete
+                      </Button>
+                    )}
                   </div>
                 </form>
               </div>
